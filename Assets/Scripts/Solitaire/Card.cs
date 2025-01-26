@@ -1,42 +1,74 @@
-// Card.cs - Represents a card in the game.
-
-using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using DG.Tweening;
+using UnityEngine.UI;
 
-public class Card:MonoBehaviour
+
+
+public enum CardState
 {
-    public CardValue cardValue;
-    public bool isFaceUp; // Whether the card is face up
-    public CardSuit cardSuit;
-    public Card CoveringCard1; // First card covering this card (if any)
-    public Card CoveringCard2; // Second card covering this card (if any)
+    Stock,
+    Waste,
+    Deck
+}
+public class Card : MonoBehaviour, IPointerClickHandler  // Реализуем интерфейс для обработки кликов
+{
+    public int value;  // Значение карты (2-10, J=11, Q=12, K=13, A=1)
+    public bool isFaceUp = false;
+    public Image cardImage;
 
+    public List<Card> coveringCards;
+    public CardState state;
 
-    public TextMeshProUGUI cardText;    // Ссылка на UI Text компонент
-    public void FlipCard()
+    private TriPeaksGame gameManager;
+
+    public void InitializeCard(int val, Sprite sprite, TriPeaksGame manager)
     {
-        isFaceUp = true;
-        // Update card visuals here
+        value = val;
+        cardImage.sprite = sprite;
+        isFaceUp = false;
+        gameManager = manager;
     }
 
-    public bool CanBeMoved(int topWasteValue)
+    public void Flip()
     {
-        return isFaceUp && (Mathf.Abs((int)cardValue - topWasteValue) == 1 || ((int)cardValue == 1 && topWasteValue == 13) || ((int)cardValue == 13 && topWasteValue == 1));
+        if (!isFaceUp)
+        {
+            isFaceUp = true;
+            transform.DOScale(1.1f, 0.2f).OnComplete(() => transform.DOScale(1f, 0.2f));
+        }
     }
 
-
-    private void OnValidate()
+    public void UpdateFace()
     {
-        // Вызываем DisplayCard при изменении значений через инспектор
-        DisplayCard();
+        foreach (Card card in coveringCards)
+        {
+            if (card.state==CardState.Deck)
+            {
+                isFaceUp=false;
+            }
+        }
+        isFaceUp=true;
     }
-    public void DisplayCard()
+
+    public void MoveToWaste(Vector3 targetPosition)
     {
-        // Собираем текстовое описание карты
-        string cardDescription = $"{cardSuit}\n{cardValue}";
+        transform.DOMove(targetPosition, 0.5f).OnComplete(() =>
+        {
+            //gameObject.SetActive(false);
+            state=CardState.Waste;
+        });
+    }
 
-        // Отображаем этот текст на UI
-        cardText.text = cardDescription;
+    public bool CanBeMoved(int topCardValue)
+    {
+        return Mathf.Abs(value - topCardValue) == 1 || (value == 1 && topCardValue == 13) || (value == 13 && topCardValue == 1);
+    }
 
+    // Метод обработки кликов по объекту
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        gameManager.OnCardClicked(this);
     }
 }
