@@ -2,9 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using DG.Tweening;
-using UnityEngine.UI;
-
-
 
 public enum CardState
 {
@@ -12,22 +9,33 @@ public enum CardState
     Waste,
     Deck
 }
-public class Card : MonoBehaviour, IPointerClickHandler  // Реализуем интерфейс для обработки кликов
+
+public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
 {
-    public int value;  // Значение карты (2-10, J=11, Q=12, K=13, A=1)
+    public int value; // Значение карты (2-10, J=11, Q=12, K=13, A=1)
     public bool isFaceUp = false;
-    public Image cardImage;
+    public Sprite cardSprite; // Спрайт карты
+    public SpriteRenderer spriteRenderer; // Компонент для отображения спрайта карты
 
     public List<Card> coveringCards;
     public CardState state;
 
     private TriPeaksGame gameManager;
 
+    private static int orderIndex=0;
+
+    void Awake()
+    {
+        spriteRenderer=GetComponent<SpriteRenderer>();
+    }
+
     public void InitializeCard(int val, Sprite sprite, TriPeaksGame manager)
     {
         value = val;
-        cardImage.sprite = sprite;
+        cardSprite = sprite;
+        spriteRenderer.sprite = cardSprite; // Устанавливаем спрайт в SpriteRenderer
         isFaceUp = false;
+        spriteRenderer.color = Color.black; // Изначально карта "закрыта"
         gameManager = manager;
     }
 
@@ -36,38 +44,52 @@ public class Card : MonoBehaviour, IPointerClickHandler  // Реализуем интерфейс 
         if (!isFaceUp)
         {
             isFaceUp = true;
-            transform.DOScale(1.1f, 0.2f).OnComplete(() => transform.DOScale(1f, 0.2f));
+            spriteRenderer.color = Color.white; // "Открываем" карту
         }
     }
 
     public void UpdateFace()
     {
+        // Проверяем все покрывающие карты
         foreach (Card card in coveringCards)
         {
-            if (card.state==CardState.Deck)
+            if (card.state == CardState.Deck)
             {
-                isFaceUp=false;
+                isFaceUp = false;
+                spriteRenderer.color = Color.black; // Если карта закрыта, отображаем её как закрытую
+                return;
             }
         }
-        isFaceUp=true;
+
+        // Если все покрывающие карты открыты или нет покрывающих карт, открываем текущую карту
+        isFaceUp = true;
+        spriteRenderer.color = Color.white; // "Открываем" карту
     }
 
     public void MoveToWaste(Vector3 targetPosition)
     {
+
+        Flip();
+        spriteRenderer.sortingOrder=orderIndex;
+        orderIndex++;
         transform.DOMove(targetPosition, 0.5f).OnComplete(() =>
         {
-            //gameObject.SetActive(false);
-            state=CardState.Waste;
+            state = CardState.Waste;
         });
     }
 
     public bool CanBeMoved(int topCardValue)
     {
+        if (topCardValue == 0)
+        {
+            return false;
+        }
+
         return Mathf.Abs(value - topCardValue) == 1 || (value == 1 && topCardValue == 13) || (value == 13 && topCardValue == 1);
     }
 
     // Метод обработки кликов по объекту
-    public void OnPointerClick(PointerEventData eventData)
+    public void OnMouseDown()
     {
         gameManager.OnCardClicked(this);
     }

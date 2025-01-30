@@ -42,9 +42,12 @@ public class TriPeaksGame : MonoBehaviour
                     currentWasteCard = card;
                     card.state = CardState.Waste;
 
-                    foreach (Card cardInDeck in deckManager.deck)
+                    foreach (Card[] row in deckManager.boardCards)
                     {
-                        cardInDeck.UpdateFace();
+                        foreach (Card cardInDeck in row)
+                        {
+                            cardInDeck.UpdateFace();
+                        }
                     }
 
                     moves++;

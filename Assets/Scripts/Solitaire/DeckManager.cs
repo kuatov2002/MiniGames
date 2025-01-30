@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEngine.Rendering.DebugUI.Table;
 
 public class DeckManager : MonoBehaviour
 {
@@ -7,7 +8,15 @@ public class DeckManager : MonoBehaviour
     public Transform stockPile, wastePile, cardContainer;
     public Sprite[] cardSprites;
 
-    public List<Card> deck = new List<Card>();
+    
+
+    public Card[][] boardCards = new Card[][]
+    {
+        new Card[3],
+        new Card[6],
+        new Card[9],
+        new Card[10]
+    };
     private Stack<Card> stock = new Stack<Card>();
     private TriPeaksGame gameManager;
 
@@ -15,12 +24,12 @@ public class DeckManager : MonoBehaviour
     {
         gameManager = manager;
         GenerateDeck();
-        ShuffleDeck();
         DealCards();
     }
 
     void GenerateDeck()
     {
+        List<Card> deck = new List<Card>();
         for (int i = 1; i <= 13; i++)
         {
             for (int j = 0; j < 4; j++)
@@ -29,53 +38,94 @@ public class DeckManager : MonoBehaviour
                 Card cardComponent = newCard.GetComponent<Card>();
                 cardComponent.InitializeCard(i, cardSprites[i - 1], gameManager);
                 deck.Add(cardComponent);
+                newCard.name = cardComponent.value.ToString();
             }
         }
-    }
 
-    void ShuffleDeck()
-    {
-        deck.Sort((a, b) => Random.Range(-1, 2));
+        for (int i = 0; i < 5; i++)
+        {
+            ShuffleDeck(deck);
+        }
+        
+
+        int index = 0;
+
+        for (int row = 0; row < boardCards.Length; row++)
+        {
+            for (int col = 0; col < boardCards[row].Length; col++)
+            {
+                boardCards[row][col] = deck[index];
+                boardCards[row][col].spriteRenderer.color = Color.black;
+                index++;
+            }
+        }
+        // Удаляем первые 28 карт, которые уже на boardCards, из основной колоды
+        deck.RemoveRange(0, 28);
+            
+        // Оставшиеся карты добавляем в стопку
+        foreach (var card in deck)
+        {
+            stock.Push(card);
+        }
     }
 
     void DealCards()
     {
-        int[][] cardOffsets = new int[][]
+        // Define the positions for each row of cards
+        Vector3[] rowPositions = new Vector3[]
         {
-            new int[] { 0 },                  // Верхний ряд (1 карта)
-            new int[] { -1, 1 },               // Второй ряд (2 карты)
-            new int[] { -2, 0, 2 },             // Третий ряд (3 карты)
-            new int[] { -4, -3, -2, -1, 0, 1, 2, 3, 4 }  // Нижний ряд (9 карт)
+            new Vector3(-3.75f, 0.75f, 0), // Top row (1 card)
+            new Vector3(-4f, 0, 0),  // Second row (3 cards)
+            new Vector3(-4.25f, -0.75f, 0), // Third row (6 cards)
+            new Vector3(-4.5f, -1.5f, 0)   // Bottom row (10 cards)
         };
 
-        float yOffset = 1.2f;
-        int index = 0;
 
-        for (int row = 0; row < cardOffsets.Length; row++)
+        for (int col = 0; col < boardCards[0].Length; col++)
         {
-            for (int col = 0; col < cardOffsets[row].Length; col++)
+            Card card = boardCards[0][col];
+            card.transform.position = rowPositions[0] + new Vector3(col * 1.5f, 0, 0);
+            card.state = CardState.Deck;
+
+        }
+        for (int col = 0; col < boardCards[1].Length; col++)
+        {
+            Card card = boardCards[1][col];
+            card.transform.position = rowPositions[1] + new Vector3((col + (col / 2)) * 0.5f, 0, 0);
+            card.state = CardState.Deck;
+        }
+        for (int row = 2; row < boardCards.Length; row++)
+        {
+            for (int col = 0; col < boardCards[row].Length; col++)
             {
-                Card card = deck[index++];
-                card.transform.position = new Vector3(cardOffsets[row][col] * 1.1f, -row * yOffset + 3, 0);
+                Card card = boardCards[row][col];
+                card.transform.position = rowPositions[row] + new Vector3(col * 0.5f, 0, 0);
                 card.state = CardState.Deck;
 
-                if (row == 3)  // Нижний ряд карт открытый
+                if (row == 3) // Bottom row
                 {
-                    card.Flip();
-                }
-                else
-                {
-                    card.gameObject.SetActive(true);
+                    card.Flip(); // Bottom row cards are face-up
                 }
             }
         }
 
-        // Оставшиеся карты в запас
-        while (index < deck.Count)
+        for (int i = 0; i < boardCards[0].Length; i++)
         {
-            stock.Push(deck[index++]);
+            boardCards[0][i].coveringCards.Add(boardCards[1][2 * i]);
+            boardCards[0][i].coveringCards.Add(boardCards[1][2 * i + 1]);
+        }
+        for (int i = 0; i < boardCards[1].Length; i++)
+        {
+            boardCards[1][i].coveringCards.Add(boardCards[2][i + (i / 2)]);
+            boardCards[1][i].coveringCards.Add(boardCards[2][i + (i / 2) + 1]);
+        }
+        for (int i = 0; i < boardCards[2].Length; i++)
+        {
+            boardCards[2][i].coveringCards.Add(boardCards[3][i]);
+            boardCards[2][i].coveringCards.Add(boardCards[3][i + 1]);
         }
     }
+
 
 
 
@@ -89,4 +139,15 @@ public class DeckManager : MonoBehaviour
         }
         return null;
     }
+
+
+    void ShuffleDeck(List<Card> deck)
+    {
+        for (int i = deck.Count - 1; i > 0; i--)
+        {
+            int randomIndex = Random.Range(0, i + 1);
+            (deck[i], deck[randomIndex]) = (deck[randomIndex], deck[i]); // Обмен местами
+        }
+    }
+
 }
