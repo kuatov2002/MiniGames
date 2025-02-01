@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEngine.Rendering.DebugUI.Table;
 
 public class DeckManager : MonoBehaviour
 {
     public GameObject cardPrefab;
-    public Transform stockPile, wastePile, cardContainer;
+    public Transform cardContainer;
     public Sprite[] cardSprites;
 
     
@@ -34,7 +33,7 @@ public class DeckManager : MonoBehaviour
         {
             for (int j = 0; j < 4; j++)
             {
-                GameObject newCard = Instantiate(cardPrefab,stockPile.position,Quaternion.identity, cardContainer);
+                GameObject newCard = Instantiate(cardPrefab,TriPeaksGame.instance.stockPile.position,Quaternion.identity, cardContainer);
                 Card cardComponent = newCard.GetComponent<Card>();
                 cardComponent.InitializeCard(i, cardSprites[i - 1], gameManager);
                 deck.Add(cardComponent);
@@ -134,12 +133,20 @@ public class DeckManager : MonoBehaviour
         if (stock.Count > 0)
         {
             Card drawnCard = stock.Pop();
-            drawnCard.transform.position = stockPile.position;
+            drawnCard.transform.position = TriPeaksGame.instance.stockPile.position;
             return drawnCard;
         }
         return null;
     }
 
+    public void ReturnCardToStock(Card card)
+    {
+        stock.Push(card);
+        card.MovePosition(TriPeaksGame.instance.stockPile.position);
+        card.state = CardState.Stock;
+        card.spriteRenderer.color = Color.black;
+        card.isFaceUp = false;
+    }
 
     void ShuffleDeck(List<Card> deck)
     {

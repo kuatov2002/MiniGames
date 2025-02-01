@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using DG.Tweening;
 
 public enum CardState
@@ -87,7 +86,10 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
 
         return Mathf.Abs(value - topCardValue) == 1 || (value == 1 && topCardValue == 13) || (value == 13 && topCardValue == 1);
     }
-
+    public void MovePosition(Vector3 position)
+    {
+        transform.DOMove(position, 0.5f);
+    }
     // Метод обработки кликов по объекту
     public void OnMouseDown()
     {
