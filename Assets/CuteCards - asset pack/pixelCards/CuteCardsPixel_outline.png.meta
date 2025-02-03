@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      CuteCardsPixel_outline_0: 5203979622610589311
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

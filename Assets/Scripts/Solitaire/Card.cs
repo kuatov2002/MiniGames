@@ -19,8 +19,6 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
     public List<Card> coveringCards;
     public CardState state;
 
-    private TriPeaksGame gameManager;
-
     private static int orderIndex=0;
 
     void Awake()
@@ -35,7 +33,6 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
         spriteRenderer.sprite = cardSprite; // Устанавливаем спрайт в SpriteRenderer
         isFaceUp = false;
         spriteRenderer.color = Color.black; // Изначально карта "закрыта"
-        gameManager = manager;
     }
 
     public void Flip()
@@ -93,6 +90,6 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
     // Метод обработки кликов по объекту
     public void OnMouseDown()
     {
-        gameManager.OnCardClicked(this);
+        TriPeaksGame.instance.OnCardClicked(this);
     }
 }

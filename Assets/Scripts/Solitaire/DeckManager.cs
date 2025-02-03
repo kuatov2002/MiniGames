@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class DeckManager : MonoBehaviour
 {
+    public static DeckManager instance;
+
     public GameObject cardPrefab;
     public Transform cardContainer;
     public Sprite[] cardSprites;
@@ -16,12 +18,22 @@ public class DeckManager : MonoBehaviour
         new Card[9],
         new Card[10]
     };
-    private Stack<Card> stock = new Stack<Card>();
-    private TriPeaksGame gameManager;
-
-    public void SetupGame(TriPeaksGame manager)
+    public Stack<Card> stock = new Stack<Card>();
+    public Card currentWasteCard;
+    void Awake()
     {
-        gameManager = manager;
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else if (instance == this)
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    public void SetupGame()
+    {
         GenerateDeck();
         DealCards();
     }
@@ -35,7 +47,7 @@ public class DeckManager : MonoBehaviour
             {
                 GameObject newCard = Instantiate(cardPrefab,TriPeaksGame.instance.stockPile.position,Quaternion.identity, cardContainer);
                 Card cardComponent = newCard.GetComponent<Card>();
-                cardComponent.InitializeCard(i, cardSprites[i - 1], gameManager);
+                cardComponent.InitializeCard(i, cardSprites[i - 1], TriPeaksGame.instance);
                 deck.Add(cardComponent);
                 newCard.name = cardComponent.value.ToString();
             }
@@ -55,6 +67,7 @@ public class DeckManager : MonoBehaviour
             {
                 boardCards[row][col] = deck[index];
                 boardCards[row][col].spriteRenderer.color = Color.black;
+                boardCards[row][col].state = CardState.Deck;
                 index++;
             }
         }
@@ -84,14 +97,12 @@ public class DeckManager : MonoBehaviour
         {
             Card card = boardCards[0][col];
             card.transform.position = rowPositions[0] + new Vector3(col * 1.5f, 0, 0);
-            card.state = CardState.Deck;
 
         }
         for (int col = 0; col < boardCards[1].Length; col++)
         {
             Card card = boardCards[1][col];
             card.transform.position = rowPositions[1] + new Vector3((col + (col / 2)) * 0.5f, 0, 0);
-            card.state = CardState.Deck;
         }
         for (int row = 2; row < boardCards.Length; row++)
         {
@@ -99,7 +110,6 @@ public class DeckManager : MonoBehaviour
             {
                 Card card = boardCards[row][col];
                 card.transform.position = rowPositions[row] + new Vector3(col * 0.5f, 0, 0);
-                card.state = CardState.Deck;
 
                 if (row == 3) // Bottom row
                 {
@@ -154,6 +164,70 @@ public class DeckManager : MonoBehaviour
         {
             int randomIndex = Random.Range(0, i + 1);
             (deck[i], deck[randomIndex]) = (deck[randomIndex], deck[i]); // Обмен местами
+        }
+    }
+    public Stack<Card> GetStockPile()
+    {
+        return stock;
+    }
+
+    public void RestoreGameState(GameState state)
+    {
+        
+
+
+        // Восстанавливаем карты на доске
+        for (int row = 0; row < boardCards.Length; row++)
+        {
+            for (int col = 0; col < boardCards[row].Length; col++)
+            {
+                if (state.boardStateData[row].cards[col] != null)
+                {
+                    // Создаём новую карту из сохранённых данных
+                    CardData savedCard = state.boardStateData[row].cards[col];
+                    GameObject cardObj = Instantiate(cardPrefab, savedCard.position, Quaternion.identity, cardContainer);
+                    Card card = cardObj.GetComponent<Card>();
+                    card.InitializeCard(savedCard.value, cardSprites[savedCard.value - 1], TriPeaksGame.instance);
+                    card.state = savedCard.state;
+
+                    boardCards[row][col] = card;
+                }
+            }
+        }
+
+        foreach (CardData cardData in state.stockPileData)
+        {
+            GameObject newCard = Instantiate(cardPrefab, TriPeaksGame.instance.stockPile.position, Quaternion.identity, cardContainer);
+            Card cardComponent = newCard.GetComponent<Card>();
+            cardComponent.InitializeCard(cardData.value, cardSprites[cardData.value - 1], TriPeaksGame.instance);
+            stock.Push(cardComponent);
+            newCard.name = cardComponent.value.ToString();
+        }
+
+
+
+        RestoreCardConnections();
+        TriPeaksGame.instance.UpdateAllCards();
+
+    }
+
+    // Вспомогательный метод для восстановления связей между картами
+    private void RestoreCardConnections()
+    {
+        for (int i = 0; i < boardCards[0].Length; i++)
+        {
+            boardCards[0][i].coveringCards.Add(boardCards[1][2 * i]);
+            boardCards[0][i].coveringCards.Add(boardCards[1][2 * i + 1]);
+        }
+        for (int i = 0; i < boardCards[1].Length; i++)
+        {
+            boardCards[1][i].coveringCards.Add(boardCards[2][i + (i / 2)]);
+            boardCards[1][i].coveringCards.Add(boardCards[2][i + (i / 2) + 1]);
+        }
+        for (int i = 0; i < boardCards[2].Length; i++)
+        {
+            boardCards[2][i].coveringCards.Add(boardCards[3][i]);
+            boardCards[2][i].coveringCards.Add(boardCards[3][i + 1]);
         }
     }
 

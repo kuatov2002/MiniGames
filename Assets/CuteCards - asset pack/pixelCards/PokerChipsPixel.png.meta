@@ -497,7 +497,22 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      PokerChipsPixel_0: -8913086740568183890
+      PokerChipsPixel_1: 7871988793067580292
+      PokerChipsPixel_10: -2183910733136518345
+      PokerChipsPixel_11: 5425166090036289683
+      PokerChipsPixel_12: -4745966049660953468
+      PokerChipsPixel_13: -253915228535437509
+      PokerChipsPixel_14: 4129346084060234941
+      PokerChipsPixel_2: -6172254686850321022
+      PokerChipsPixel_3: 4855290354851230146
+      PokerChipsPixel_4: -2418815245730725619
+      PokerChipsPixel_5: 1987250010157682613
+      PokerChipsPixel_6: 4112708706053419920
+      PokerChipsPixel_7: 6667538468165156697
+      PokerChipsPixel_8: -245398256120903059
+      PokerChipsPixel_9: 3634473280020092539
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

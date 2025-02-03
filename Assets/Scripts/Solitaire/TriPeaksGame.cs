@@ -1,3 +1,4 @@
+using DG.Tweening.Core.Easing;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,8 +9,7 @@ public class TriPeaksGame : MonoBehaviour
 
     private Stack<GameMove> moveHistory = new Stack<GameMove>();
     public Transform stockPile, wastePile;
-    public DeckManager deckManager;
-    public Card currentWasteCard;
+    
     public Text movesText, timerText;
 
     private int moves = 0;
@@ -30,7 +30,12 @@ public class TriPeaksGame : MonoBehaviour
 
     void Start()
     {
-        deckManager.SetupGame(this);
+        //DeckManager.instance.SetupGame();
+        LoadGameState();
+    }
+    private void OnEnable()
+    {
+        
     }
 
     void Update()
@@ -44,15 +49,14 @@ public class TriPeaksGame : MonoBehaviour
 
     public void OnCardClicked(Card card)
     {
-        if (!card.isFaceUp)
-        {
-            return;
-        }
-
         switch (card.state)
         {
-            case CardState.Deck:
-                if (currentWasteCard != null && card.CanBeMoved(currentWasteCard.value))
+            case CardState.Deck: 
+                if (!card.isFaceUp)
+                {
+                    return;
+                }
+                if (DeckManager.instance.currentWasteCard != null && card.CanBeMoved(DeckManager.instance.currentWasteCard.value))
                 {
                     GameMove move = new GameMove(
                         MoveType.CardMove,
@@ -60,29 +64,40 @@ public class TriPeaksGame : MonoBehaviour
                         card.state,
                         card.transform.position,
                         card.isFaceUp,
-                        currentWasteCard
+                        DeckManager.instance.currentWasteCard
                     );
                     moveHistory.Push(move);
 
                     // Execute the move
                     card.MoveToWaste(wastePile.position);
-                    currentWasteCard = card;
+                    DeckManager.instance.currentWasteCard = card;
                     card.state = CardState.Waste;
-                    foreach (Card[] row in deckManager.boardCards)
-                    {
-                        foreach (Card cardInDeck in row)
-                        {
-                            cardInDeck.UpdateFace();
-                        }
-                    }
+                    UpdateAllCards();
+
                     moves++;
                     movesText.text = "Moves: " + moves;
 
                     CheckWinCondition();
                 }
+
+                break;
+            case CardState.Stock:
+                DrawNewCard();
                 break;
         }
     }
+
+    public void UpdateAllCards()
+    {
+        foreach (Card[] row in DeckManager.instance.boardCards)
+        {
+            foreach (Card cardInDeck in row)
+            {
+                cardInDeck.UpdateFace();
+            }
+        }
+    }
+
     public void Undo()
     {
         if (moveHistory.Count == 0)
@@ -107,10 +122,10 @@ public class TriPeaksGame : MonoBehaviour
                     lastMove.MovedCard.isFaceUp = false;
                 }
 
-                currentWasteCard = lastMove.PreviousWasteCard;
+                DeckManager.instance.currentWasteCard = lastMove.PreviousWasteCard;
 
                 // Обновляем состояние всех карт
-                foreach (Card[] row in deckManager.boardCards)
+                foreach (Card[] row in DeckManager.instance.boardCards)
                 {
                     foreach (Card cardInDeck in row)
                     {
@@ -122,15 +137,16 @@ public class TriPeaksGame : MonoBehaviour
 
             case MoveType.DrawCard:
                 // Возвращаем карту в колоду
-                deckManager.ReturnCardToStock(lastMove.MovedCard);
-                currentWasteCard = lastMove.PreviousWasteCard;
-                
+                DeckManager.instance.ReturnCardToStock(lastMove.MovedCard);
+                DeckManager.instance.currentWasteCard = lastMove.PreviousWasteCard;
+
                 break;
         }
     }
+
     public void DrawNewCard()
     {
-        Card newCard = deckManager.DrawFromStock();
+        Card newCard = DeckManager.instance.DrawFromStock();
         if (newCard != null)
         {
             // Сохраняем информацию о ходе перед выполнением
@@ -140,15 +156,15 @@ public class TriPeaksGame : MonoBehaviour
                 CardState.Stock,
                 stockPile.position,
                 newCard.isFaceUp,
-                currentWasteCard
+                DeckManager.instance.currentWasteCard
             );
             moveHistory.Push(move);
 
             moves++;
             movesText.text = "Moves: " + moves;
 
-            currentWasteCard = newCard;
-            currentWasteCard.MoveToWaste(wastePile.position);
+            DeckManager.instance.currentWasteCard = newCard;
+            DeckManager.instance.currentWasteCard.MoveToWaste(wastePile.position);
         }
         else
         {
@@ -164,8 +180,44 @@ public class TriPeaksGame : MonoBehaviour
             Debug.Log("You win!");
         }*/
     }
-}
 
+
+    private void OnApplicationQuit()
+    {
+        SaveGameState();
+    }
+
+    public float GetTimer()
+    {
+        return timer;
+    }
+
+    public int GetMoves()
+    {
+        return moves;
+    }
+
+    private void SaveGameState()
+    {
+        SaveManager.SaveGame();
+    }
+
+    private void LoadGameState()
+    {
+        GameState savedState = SaveManager.LoadGame(); 
+        if (savedState != null)
+        {
+            timer = savedState.timer;
+            moves = savedState.moves;
+            movesText.text = "Moves: " + moves;
+            timerText.text = $"Time: {timer:F1}s";
+
+            // Let DeckManager handle the card restoration
+            DeckManager.instance.RestoreGameState(savedState);
+        }
+    }
+
+}
 
 
 public enum MoveType
@@ -183,7 +235,8 @@ public class GameMove
     public bool WasFaceUp { get; set; }
     public Card PreviousWasteCard { get; set; }
 
-    public GameMove(MoveType type, Card movedCard, CardState previousState, Vector3 previousPosition, bool wasFaceUp, Card previousWasteCard)
+    public GameMove(MoveType type, Card movedCard, CardState previousState, Vector3 previousPosition, bool wasFaceUp,
+        Card previousWasteCard)
     {
         Type = type;
         MovedCard = movedCard;
