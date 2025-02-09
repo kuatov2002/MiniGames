@@ -19,7 +19,7 @@ public class DeckManager : MonoBehaviour
         new Card[10]
     };
     public Stack<Card> stock = new Stack<Card>();
-    public Card currentWasteCard;
+    public Stack<Card> waste = new Stack<Card>();
     void Awake()
     {
         if (instance == null)
@@ -45,9 +45,9 @@ public class DeckManager : MonoBehaviour
         {
             for (int j = 0; j < 4; j++)
             {
-                GameObject newCard = Instantiate(cardPrefab,TriPeaksGame.instance.stockPile.position,Quaternion.identity, cardContainer);
+                GameObject newCard = Instantiate(cardPrefab,TriPeaksGame.instance.stockPoint.position,Quaternion.identity, cardContainer);
                 Card cardComponent = newCard.GetComponent<Card>();
-                cardComponent.InitializeCard(i, cardSprites[i - 1], TriPeaksGame.instance);
+                cardComponent.InitializeCard(i, cardSprites[i - 1]);
                 deck.Add(cardComponent);
                 newCard.name = cardComponent.value.ToString();
             }
@@ -143,7 +143,7 @@ public class DeckManager : MonoBehaviour
         if (stock.Count > 0)
         {
             Card drawnCard = stock.Pop();
-            drawnCard.transform.position = TriPeaksGame.instance.stockPile.position;
+            drawnCard.transform.position = TriPeaksGame.instance.stockPoint.position;
             return drawnCard;
         }
         return null;
@@ -152,10 +152,11 @@ public class DeckManager : MonoBehaviour
     public void ReturnCardToStock(Card card)
     {
         stock.Push(card);
-        card.MovePosition(TriPeaksGame.instance.stockPile.position);
+        card.MovePosition(TriPeaksGame.instance.stockPoint.position);
         card.state = CardState.Stock;
         card.spriteRenderer.color = Color.black;
         card.isFaceUp = false;
+        waste.Pop();
     }
 
     void ShuffleDeck(List<Card> deck)
@@ -170,40 +171,58 @@ public class DeckManager : MonoBehaviour
     {
         return stock;
     }
-
+    private Card FindCardByUniqueID(string uniqueID)
+    {
+        // Поиск карты по всем возможным местам
+        foreach (var row in boardCards)
+        {
+            foreach (var card in row)
+            {
+                if (card != null && card.UniqueID == uniqueID) return card;
+            }
+        }
+        foreach (var card in stock)
+        {
+            if (card.UniqueID == uniqueID) return card;
+        }
+        return waste.Peek()?.UniqueID == uniqueID ? waste.Peek() : null;
+    }
     public void RestoreGameState(GameState state)
     {
-        
-
-
-        // Восстанавливаем карты на доске
         for (int row = 0; row < boardCards.Length; row++)
         {
             for (int col = 0; col < boardCards[row].Length; col++)
             {
-                if (state.boardStateData[row].cards[col] != null)
-                {
-                    // Создаём новую карту из сохранённых данных
-                    CardData savedCard = state.boardStateData[row].cards[col];
-                    GameObject cardObj = Instantiate(cardPrefab, savedCard.position, Quaternion.identity, cardContainer);
-                    Card card = cardObj.GetComponent<Card>();
-                    card.InitializeCard(savedCard.value, cardSprites[savedCard.value - 1], TriPeaksGame.instance);
-                    card.state = savedCard.state;
-
-                    boardCards[row][col] = card;
-                }
+                CardData savedCard = state.boardStateData[row].cards[col];
+                GameObject cardObj = Instantiate(cardPrefab, savedCard.position, Quaternion.identity, cardContainer);
+                Card card = cardObj.GetComponent<Card>();
+                card.InitializeCard(savedCard.value, cardSprites[savedCard.value - 1]);
+                card.UniqueID = savedCard.uniqueID; // Восстанавливаем ID
+                card.state = savedCard.state;
+                card.isFaceUp = savedCard.isFaceUp;
+                boardCards[row][col] = card;
             }
         }
 
-        foreach (CardData cardData in state.stockPileData)
+        // Восстановление стоковой колоды
+        foreach (CardData cardData in state.stockData)
         {
-            GameObject newCard = Instantiate(cardPrefab, TriPeaksGame.instance.stockPile.position, Quaternion.identity, cardContainer);
+            GameObject newCard = Instantiate(cardPrefab, TriPeaksGame.instance.stockPoint.position, Quaternion.identity, cardContainer);
             Card cardComponent = newCard.GetComponent<Card>();
-            cardComponent.InitializeCard(cardData.value, cardSprites[cardData.value - 1], TriPeaksGame.instance);
+            cardComponent.InitializeCard(cardData.value, cardSprites[cardData.value - 1]);
+            cardComponent.UniqueID = cardData.uniqueID; // Восстанавливаем ID
             stock.Push(cardComponent);
-            newCard.name = cardComponent.value.ToString();
         }
 
+        // Восстановление сброса
+        foreach (CardData cardData in state.wasteData)
+        {
+            GameObject newCard = Instantiate(cardPrefab, TriPeaksGame.instance.wastePoint.position, Quaternion.identity, cardContainer);
+            Card cardComponent = newCard.GetComponent<Card>();
+            cardComponent.InitializeCard(cardData.value, cardSprites[cardData.value - 1]);
+            cardComponent.UniqueID = cardData.uniqueID; // Восстанавливаем ID
+            stock.Push(cardComponent);
+        }
 
 
         RestoreCardConnections();

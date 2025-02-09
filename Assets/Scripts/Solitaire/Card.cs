@@ -19,20 +19,22 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
     public List<Card> coveringCards;
     public CardState state;
 
-    private static int orderIndex=0;
+    public static int orderIndex=0;
 
+    public string UniqueID;
     void Awake()
     {
         spriteRenderer=GetComponent<SpriteRenderer>();
     }
 
-    public void InitializeCard(int val, Sprite sprite, TriPeaksGame manager)
+    public void InitializeCard(int val, Sprite sprite)
     {
         value = val;
         cardSprite = sprite;
-        spriteRenderer.sprite = cardSprite; // Устанавливаем спрайт в SpriteRenderer
+        spriteRenderer.sprite = cardSprite;
         isFaceUp = false;
-        spriteRenderer.color = Color.black; // Изначально карта "закрыта"
+        spriteRenderer.color = Color.black;
+        UniqueID = System.Guid.NewGuid().ToString(); // Генерируем уникальный ID
     }
 
     public void Flip()
@@ -62,17 +64,7 @@ public class Card : MonoBehaviour // Реализуем интерфейс для обработки кликов
         spriteRenderer.color = Color.white; // "Открываем" карту
     }
 
-    public void MoveToWaste(Vector3 targetPosition)
-    {
 
-        Flip();
-        spriteRenderer.sortingOrder=orderIndex;
-        orderIndex++;
-        transform.DOMove(targetPosition, 0.5f).OnComplete(() =>
-        {
-            state = CardState.Waste;
-        });
-    }
 
     public bool CanBeMoved(int topCardValue)
     {
